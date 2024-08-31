@@ -8,6 +8,7 @@ import { getCookies } from "@/cookies"
 import { db } from "@/config"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { toast } from "react-toastify"
+import Swal from "sweetalert2"
 
 const Expense = (props: { expense: ExpenseModel }) => {
     const { expense } = props
@@ -54,6 +55,19 @@ const Expense = (props: { expense: ExpenseModel }) => {
 
     const onDeleteHandler = async (e: React.SyntheticEvent) => {
         e.preventDefault()
+        const res = await Swal.fire({
+            title: "Are you sure?",
+            text: "You won't be able to revert this action.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        })
+        if (!res.isConfirmed) {
+            onOpen()
+            return
+        }
         try {
             const { id: userID } = await getCookies()
             const expenseRef = doc(db, 'users', userID, 'expenses', expense.id)
@@ -109,7 +123,7 @@ const Expense = (props: { expense: ExpenseModel }) => {
                                         variant="bordered"
                                         onChange={(e: any) => {
                                             setAmountErrorText('')
-                                            setFormInfo({...formInfo, amount: e.target.value})
+                                            setFormInfo({ ...formInfo, amount: e.target.value })
                                         }}
                                         value={formInfo.amount.toString()}
                                         isRequired
@@ -128,12 +142,12 @@ const Expense = (props: { expense: ExpenseModel }) => {
                                         value={formInfo.notes}
                                         variant="bordered"
                                         onChange={(e: any) => {
-                                            setFormInfo({...formInfo, notes: e.target.value})
+                                            setFormInfo({ ...formInfo, notes: e.target.value })
                                         }}
                                         isRequired
                                         required
                                     />
-                                    <DatePicker onChange={(e: any) => setFormInfo({...formInfo, date: `${e.year}-${e.month}-${e.day}`})} value={parseDate(moment(formInfo.date).format('YYYY-MM-DD'))} showMonthAndYearPickers label="date" name="date" variant="bordered" isRequired maxValue={today(getLocalTimeZone())} />
+                                    <DatePicker onChange={(e: any) => setFormInfo({ ...formInfo, date: `${e.year}-${e.month}-${e.day}` })} value={parseDate(moment(formInfo.date).format('YYYY-MM-DD'))} showMonthAndYearPickers label="date" name="date" variant="bordered" isRequired maxValue={today(getLocalTimeZone())} />
                                     <Select
                                         isRequired
                                         required
@@ -144,7 +158,7 @@ const Expense = (props: { expense: ExpenseModel }) => {
                                         className="text-black [&>*]:text-black"
                                         variant="bordered"
                                         onChange={(e: any) => {
-                                            setFormInfo({...formInfo, category: e.target.value})
+                                            setFormInfo({ ...formInfo, category: e.target.value })
                                         }}
                                         classNames={{ value: ["text-black"] }}
                                     >

@@ -7,6 +7,7 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { collection, doc, getDocs, or, query, setDoc, where } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { toast } from "react-toastify"
+import Swal from "sweetalert2"
 
 const Budget = (props: { amountSpentBasedOnCategories: { [key: string]: number }, budget: ExpenseModel }) => {
     const { onOpen, onOpenChange, isOpen, onClose } = useDisclosure()
@@ -51,6 +52,19 @@ const Budget = (props: { amountSpentBasedOnCategories: { [key: string]: number }
     }
     const onDeleteHandler = async (e: React.SyntheticEvent) => {
         e.preventDefault()
+        const res = await Swal.fire({
+            title: "Are you sure?",
+            text: "Don't worry, it will only reset the budget.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        })
+        if (!res.isConfirmed) {
+            onOpen()
+            return
+        }
         try {
             const { id: userID } = await getCookies()
             const budgetRef = doc(db, 'users', userID, 'budgets', budget.id)
