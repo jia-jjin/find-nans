@@ -1,112 +1,293 @@
+'use client'
+
+import { Button, Progress } from "@nextui-org/react";
 import Image from "next/image";
+import ExpenseModel from "@/models/ExpenseModel";
+import { db } from "@/config";
+import { getCookies } from "@/cookies";
+import { collection, doc, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import AddExpense from "@/components/home/AddExpense";
+import ExpensesDoughnut from "@/components/home/ExpensesDoughnut";
+import moment, { Moment } from "moment";
+import MonthlyExpenses from "@/components/home/MonthlyExpenses";
+import Budget from "@/components/home/Budget";
+import AddBudget from "@/components/home/AddBudget";
+import AllBudgets from "@/components/home/AllBudgets";
+import Expense from "@/components/home/Expense";
+import AllExpenses from "@/components/home/AllExpenses";
 
 export default function Home() {
+  // const [income, setIncome] = useState<Array<ExpenseModel>>([])
+  const [balance, setBalance] = useState(0.00)
+  const [average, setAverage] = useState(0.00)
+  const [expenses, setExpenses] = useState<any>([])
+  const [everyExpenses, setEveryExpenses] = useState<any>([])
+  const [amountSpentBasedOnCategories, setAmountSpentBasedOnCategories] = useState<{ [key: string]: number }>({})
+
+  const [budget, setBudget] = useState<any>([])
+  const [everyBudget, setEveryBudget] = useState<any>([])
+  const [name, setName] = useState('')
+
+  const pieChartOptions = [
+    {
+      value: 'alltime',
+      label: 'All Time'
+    },
+    {
+      value: 'year',
+      label: 'This Year'
+    },
+    {
+      value: 'month',
+      label: 'This Month'
+    },
+    {
+      value: 'week',
+      label: 'This Week'
+    },
+    {
+      value: 'day',
+      label: 'Today'
+    },
+  ]
+  const lineChartOptions = [
+    {
+      value: '12months',
+      label: 'Last 12 Months'
+    },
+    {
+      value: '6months',
+      label: 'Last 6 Months'
+    },
+    {
+      value: '3months',
+      label: 'Last 3 Months'
+    },
+  ]
+  const [selectedPieChartOption, setSelectedPieChartOption] = useState('alltime')
+  const [selectedLineChartOption, setSelectedLineChartOption] = useState('3months')
+
+  useEffect(() => {
+    let total = 0
+    let startDateOption: Moment | string = ''
+    if (selectedPieChartOption == 'alltime') {
+      startDateOption = ''
+    } else if (selectedPieChartOption == 'year') {
+      startDateOption = moment().startOf('year')
+    } else if (selectedPieChartOption == 'month') {
+      startDateOption = moment().startOf('month')
+    } else if (selectedPieChartOption == 'week') {
+      startDateOption = moment().startOf('week')
+    } else {
+      startDateOption = moment().startOf('day')
+    }
+    everyExpenses
+      .filter((expense: ExpenseModel) => startDateOption ? moment(expense.date) >= startDateOption : expense)
+      .map((expense: ExpenseModel) => {
+        total += expense.amount
+      })
+    setBalance(total)
+  }, [everyExpenses, selectedPieChartOption])
+
+  useEffect(() => {
+    let average = 0
+    let startDateOption: Moment = moment().subtract(3, 'months')
+    if (selectedLineChartOption == '12months') {
+      startDateOption = moment().subtract(12, 'months')
+      console.log(moment().subtract(3, 'months'))
+    } else if (selectedLineChartOption == '6months') {
+      startDateOption = moment().subtract(6, 'months')
+    } else {
+      startDateOption = moment().subtract(3, 'months')
+    }
+    let uniqueMonths: any = {}
+    everyExpenses
+      .filter((expense: ExpenseModel) => moment(expense.date) >= startDateOption)
+      .map((expense: ExpenseModel) => {
+        uniqueMonths[moment(expense.date).format("MMM")] = 69
+        average += expense.amount
+      })
+    setAverage(Number((average / (Object.keys(uniqueMonths).length || 1)).toFixed(2)))
+  }, [everyExpenses, selectedLineChartOption])
+
+  const getExpenses = async () => {
+    const { id, name } = await getCookies()
+    setName(name)
+    const userRef = collection(db, 'users', id, 'expenses')
+    const q = query(userRef, orderBy('date', 'desc'))
+    const unsubscribe = onSnapshot(q, async (docSnapshot) => {
+      let allExpenses: Array<ExpenseModel> = []
+      docSnapshot.docs.map((expense) => {
+        const tempExpenses = { ...expense.data(), id: expense.id } as ExpenseModel
+        allExpenses.push(tempExpenses)
+      })
+      setExpenses(allExpenses.slice(0, 3))
+      setEveryExpenses(allExpenses)
+      let amountSpent: any = {}
+      allExpenses.map((expense: ExpenseModel) => {
+        if (amountSpent[expense.category]) {
+          amountSpent[expense.category] += expense.amount
+        } else {
+          amountSpent[expense.category] = expense.amount
+        }
+      })
+      setAmountSpentBasedOnCategories(amountSpent)
+      console.log(amountSpent)
+    }, (error) => {
+      console.error('Error fetching expenses data for user:', error.message);
+    })
+    return () => unsubscribe()
+  }
+
+  const getBudget = async () => {
+    const { id } = await getCookies()
+    const userRef = collection(db, 'users', id, 'budgets')
+    const q = query(userRef, orderBy('budget', 'desc'), where('budget', '>', 0))
+    const unsubscribe = onSnapshot(q, async (docSnapshot) => {
+      let allBudget: Array<ExpenseModel> = []
+      docSnapshot.docs.map((budget) => {
+        const tempBudget = { ...budget.data(), id: budget.id } as ExpenseModel
+        allBudget.push(tempBudget)
+      })
+      setBudget(allBudget.slice(0, 3))
+      setEveryBudget(allBudget)
+    }, (error) => {
+      console.error('Error fetching budget data for user:', error.message);
+    })
+    return () => unsubscribe()
+  }
+
+  const [greeting, setGreeting] = useState('Welcome')
+  useEffect(() => {
+    getExpenses()
+    getBudget()
+    let currentHour = Number(moment().format("HH"));
+    if (currentHour >= 0 && currentHour < 12) {
+      setGreeting("Good Morning")
+    } else if (currentHour < 17) {
+      setGreeting("Good Afternoon")
+    } else if (currentHour < 24) {
+      setGreeting("Good Evening")
+    }
+  }, [])
+
+
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="flex min-h-screen flex-col items-center justify-between py-12 px-4 bg-green-300">
+      <div className="container mx-auto">
+        <div className="space-y-4">
+          <div>
+            <h1 className="uppercase tracking-wider text-sm font-bold text-black">{greeting}</h1>
+            <h1 className="mt-2 text-5xl font-bold text-black">{name}</h1>
+          </div>
+          {/* <div className="flex gap-4 items-center">
+            <TotalSpent expenses={expenses} />
+          </div> */}
+
+        </div>
+        <div className="flex gap-4 w-full mt-8 justify-center md:flex-row flex-col">
+          <div className="md:w-1/2 w-full py-8 px-6 rounded-xl bg-white/90 flex flex-col items-center gap-4">
+            <h1 className="font-bold text-2xl">Recent Expenses</h1>
+            {expenses.length
+              ? <>
+                {expenses.map((expense: ExpenseModel) => {
+                  return <Expense expense={expense} />
+                })}
+                <AllExpenses expenses={everyExpenses} />
+              </>
+              : <div className="h-full flex items-center"><h1 className="text-2xl">No budgets found.</h1></div>}
+          </div>
+          <div className="md:w-1/2 w-full py-8 xs:px-6 px-2 rounded-xl bg-white/90 flex flex-col items-center gap-4">
+            <h1 className="font-bold text-2xl text-center">Monthly expenses</h1>
+            <div className="flex gap-2 flex-wrap justify-center">
+              {lineChartOptions.map(option => {
+                return (<Button
+                  disableRipple
+                  radius="full"
+                  color={selectedLineChartOption == option.value ? "primary" : "default"}
+                  startContent={
+                    selectedLineChartOption == option.value && <svg
+                      aria-hidden="true"
+                      fill="none"
+                      focusable="false"
+                      height="1em"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                      width="1em"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  }
+                  onClick={() => setSelectedLineChartOption(option.value)}
+                >{option.label}</Button>)
+              })}
+            </div>
+            <MonthlyExpenses expenses={everyExpenses} option={selectedLineChartOption} />
+            <div className="flex flex-col gap-2 items-center mt-2">
+              <p className="uppercase xs:tracking-wider tracking-wide text-sm font-semibold text-center">average amount spent per month</p>
+              <h1 className="font-bold xs:text-5xl text-3xl"><span className="xs:text-2xl text-lg">RM</span> {average}</h1>
+            </div>
+          </div>
+
+        </div>
+        <div className="flex gap-4 w-full mt-4 justify-center md:flex-row flex-col">
+          <div className="md:w-1/2 w-full py-8 px-6 rounded-xl bg-white/90 flex flex-col items-center gap-4">
+            <div className="flex gap-4 items-center">
+              <h1 className="font-bold text-2xl">Budget this month</h1>
+              <AddBudget size="md" />
+            </div>
+            {budget.length
+              ? <>
+                {budget.map((budget: ExpenseModel) => {
+                  return <Budget budget={budget} amountSpentBasedOnCategories={amountSpentBasedOnCategories} />
+                })}
+                <AllBudgets budgets={everyBudget} amountSpentBasedOnCategories={amountSpentBasedOnCategories} />
+              </>
+              : <div className="h-full flex items-center"><h1 className="text-2xl">No budgets found.</h1></div>}
+          </div>
+          <div className="md:w-1/2 w-full py-8 xs:px-6 px-2 rounded-xl bg-white/90 flex flex-col items-center gap-4">
+            <h1 className="font-bold text-2xl text-center">Expenses based on categories</h1>
+            <div className="flex gap-2 flex-wrap justify-center">
+              {pieChartOptions.map(option => {
+                return (<Button
+                  disableRipple
+                  radius="full"
+                  color={selectedPieChartOption == option.value ? "primary" : "default"}
+                  startContent={
+                    selectedPieChartOption == option.value && <svg
+                      aria-hidden="true"
+                      fill="none"
+                      focusable="false"
+                      height="1em"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                      width="1em"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  }
+                  onClick={() => setSelectedPieChartOption(option.value)}
+                >{option.label}</Button>)
+              })}
+            </div>
+            <ExpensesDoughnut expenses={everyExpenses} option={selectedPieChartOption} />
+            <div className="flex flex-col gap-2 items-center mt-2">
+              <p className="uppercase tracking-wider text-sm font-semibold">total amount spent</p>
+              <h1 className="font-bold xs:text-5xl text-3xl"><span className="xs:text-2xl text-lg">RM</span> {balance}</h1>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+      <div className="fixed bottom-6 right-6">
+        <AddExpense />
       </div>
     </main>
   );
