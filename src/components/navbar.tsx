@@ -37,6 +37,10 @@ const Topbar = () => {
 
     useEffect(() => {
         onLoad()
+    }, [auth.currentUser]);
+    
+    useEffect(() => {
+        onLoad()
     }, []);
 
     const onLogoutHandler = async () => {
