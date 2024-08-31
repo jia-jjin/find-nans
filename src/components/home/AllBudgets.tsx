@@ -14,8 +14,8 @@ const AllBudgets = (props: { amountSpentBasedOnCategories: { [key: string]: numb
                         <>
                             <ModalHeader className="flex flex-col gap-1">All Budgets</ModalHeader>
                             <ModalBody className="p-4">
-                                {budgets.map((budget) => {
-                                    return <Budget budget={budget} amountSpentBasedOnCategories={amountSpentBasedOnCategories}/>
+                                {budgets.map((budget, index) => {
+                                    return <Budget key={'budget-' + index} budget={budget} amountSpentBasedOnCategories={amountSpentBasedOnCategories}/>
                                 })}
                             </ModalBody>
                             <ModalFooter>

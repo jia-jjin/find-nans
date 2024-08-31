@@ -76,8 +76,8 @@ const AllExpenses = (props: { expenses: Array<ExpenseModel> }) => {
                             <ModalBody className="p-4">
                                 {
                                     filteredResults.length
-                                        ? filteredResults.map((expense) => {
-                                            return <Expense expense={expense} />
+                                        ? filteredResults.map((expense, index) => {
+                                            return <Expense expense={expense} key={'expense-' + index} />
                                         })
                                         : <div className="place-content-center h-[200px]"><h1 className="text-lg text-center">No expenses matching this category found.</h1></div>
                                 }

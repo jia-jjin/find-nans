@@ -192,8 +192,8 @@ export default function Home() {
             <h1 className="font-bold text-2xl">Recent Expenses</h1>
             {expenses.length
               ? <>
-                {expenses.map((expense: ExpenseModel) => {
-                  return <Expense expense={expense} />
+                {expenses.map((expense: ExpenseModel, index: number) => {
+                  return <Expense expense={expense} key={'expense-' + index}/>
                 })}
                 <AllExpenses expenses={everyExpenses} />
               </>
@@ -207,6 +207,7 @@ export default function Home() {
                   disableRipple
                   radius="full"
                   color={selectedLineChartOption == option.value ? "primary" : "default"}
+                  key={option.value}
                   startContent={
                     selectedLineChartOption == option.value && <svg
                       aria-hidden="true"
@@ -243,8 +244,8 @@ export default function Home() {
             </div>
             {budget.length
               ? <>
-                {budget.map((budget: ExpenseModel) => {
-                  return <Budget budget={budget} amountSpentBasedOnCategories={amountSpentBasedOnCategories} />
+                {budget.map((budget: ExpenseModel, index: number) => {
+                  return <Budget key={'budget-' + index} budget={budget} amountSpentBasedOnCategories={amountSpentBasedOnCategories} />
                 })}
                 <AllBudgets budgets={everyBudget} amountSpentBasedOnCategories={amountSpentBasedOnCategories} />
               </>
@@ -257,6 +258,7 @@ export default function Home() {
                 return (<Button
                   disableRipple
                   radius="full"
+                  key={option.value}
                   color={selectedPieChartOption == option.value ? "primary" : "default"}
                   startContent={
                     selectedPieChartOption == option.value && <svg
