@@ -125,7 +125,7 @@ export default function Home() {
       setExpenses(allExpenses.slice(0, 3))
       setEveryExpenses(allExpenses)
       let amountSpent: any = {}
-      allExpenses.map((expense: ExpenseModel) => {
+      allExpenses.filter(expense => moment(expense.date) > moment().startOf('month')).map((expense: ExpenseModel) => {
         if (amountSpent[expense.category]) {
           amountSpent[expense.category] += expense.amount
         } else {

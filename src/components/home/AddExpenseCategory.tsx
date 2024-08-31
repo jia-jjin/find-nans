@@ -27,16 +27,16 @@ const AddExpenseCategory = (props: { categories: Array<ExpenseModel> }) => {
             setErrorText('Category already exists!')
             return
         }
-        // if (budget < 0) {
-        //     setBudgetErrorText('Budget should be more than or equals to 0!')
-        //     return
-        // }
+        if (!category.trim()) {
+            setErrorText('Must not be empty!')
+            return
+        }
         try {
             const { id } = await getCookies()
             const categoriesRef = collection(db, 'users', id, 'budgets')
             await addDoc(categoriesRef, {
                 budget: 0,
-                category: category
+                category: category.trim()
             })
             onClose()
             toast.success('Category added successfully!')
@@ -64,6 +64,7 @@ const AddExpenseCategory = (props: { categories: Array<ExpenseModel> }) => {
                                     variant="bordered"
                                     required
                                     isRequired
+                                    onChange={() => setErrorText('')}
                                 />
                                 <h1 className="text-red-500 text-sm">{errorText}</h1>
                                 {/* <Input

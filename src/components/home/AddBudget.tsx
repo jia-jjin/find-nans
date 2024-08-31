@@ -74,7 +74,7 @@ const AddBudget = (props: { size: "sm" | "md" | 'lg' | undefined }) => {
                 <ModalContent>
                     {(onClose) => (
                         <form onSubmit={onSubmitHandler}>
-                            <ModalHeader className="flex flex-col gap-1">Add Budget</ModalHeader>
+                            <ModalHeader className="flex flex-col gap-1">Add Budget (cannot add duplicates)</ModalHeader>
                             <ModalBody>
                                 <Input
                                     label="Amount"
@@ -108,7 +108,7 @@ const AddBudget = (props: { size: "sm" | "md" | 'lg' | undefined }) => {
                                         </SelectItem>
                                     ))}
                                 </Select>
-                                {/* <AddExpenseCategory categories={categories} /> */}
+                                <AddExpenseCategory categories={categories} />
                             </ModalBody>
                             <ModalFooter>
                                 <Button color="danger" variant="flat" onPress={onClose}>
